@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iBoxen - Agent Guide System v11.31 (Live DB)</title>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #0052cc;
+            --primary-hover: #0747a6;
+            --bg-color: #f4f5f7;
+            --card-bg: #ffffff;
+            --text-color: #172b4d;
+            --border-color: #dfe1e6;
+            --danger: #de350b;
+            --success: #00875a;
+            --info-bg: #e6f7ff;
+            --info-border: #91d5ff;
+            --info-text: #0050b3;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); padding: 15px; }
+
+        .container { max-width: 1200px; margin: 0 auto; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); min-height: 90vh; display: flex; flex-direction: column; }
+
+        h1, h2, h3, h4 { color: var(--primary); }
+        .hidden { display: none !important; }
+
+        /* HEADER & TOP NAVIGATION */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .nav-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+        .nav-tab-btn { background: #e2e8f0; color: #334155; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .nav-tab-btn:hover { background: #cbd5e1; }
+        .nav-tab-btn.active { background: var(--primary); color: white; }
+
+        .logout-btn-top { background: var(--danger); color: white; border: none; padding: 8px 14px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .logout-btn-top:hover { opacity: 0.9; }
+
+        /* RESPONSIV LAYOUT */
+        .main-layout { display: flex; gap: 20px; flex: 1; flex-wrap: wrap; }
+        .left-panel { width: 280px; background: #fafbfc; border-right: 1px solid var(--border-color); padding-right: 15px; flex-shrink: 0; }
+        .right-panel { flex: 1; min-width: 280px; overflow-y: auto; }
+
+        @media (max-width: 850px) {
+            .left-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; padding-right: 0; }
+        }
+
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 11px; font-weight: 700; color: #5e6c84; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+
+        .btn { padding: 8px 12px; border: 1px solid var(--border-color); background: white; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; width: 100%; text-align: left; margin-bottom: 6px; color: var(--text-color); font-weight: 500; }
+        .btn:hover { border-color: var(--primary); background: #f0f4ff; }
+
+        .msg-board { background: var(--info-bg); border-left: 4px solid var(--info-border); padding: 12px; margin-bottom: 12px; border-radius: 4px; color: var(--info-text); font-size: 13px; }
+
+        /* SÖKFÄLT */
+        .search-container { position: relative; margin-bottom: 12px; display: flex; align-items: center; }
+        .sidebar-search-field { width: 100%; padding: 8px 30px 8px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; outline: none; }
+        .sidebar-search-field:focus { border-color: var(--primary); }
+        .search-clear-btn { position: absolute; right: 6px; background: #e2e8f0; border: none; color: #334155; font-size: 10px; font-weight: bold; cursor: pointer; width: 18px; height: 18px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+
+        .gate-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .gate-btn { padding: 12px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: all 0.2s; }
+        .gate-btn:hover { background: var(--primary-hover); }
+        .gate-btn.imported { background: #4f46e5; }
+
+        .template-box { background: #fffbe6; border-left: 4px solid #fa8c16; padding: 16px; margin-top: 12px; border-radius: 4px; border: 1px solid #ffe58f; }
+        .template-title { font-weight: 700; margin-bottom: 8px; font-size: 13px; color: #d46b08; }
+        .template-text { font-size: 13px; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; color: #172b4d; }
+        
+        .copy-btn { background: var(--primary); color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+        .copy-btn:hover { background: var(--primary-hover); }
+        
+        .back-btn { background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 16px; }
+        
+        .flow-step { background: #f8f9fa; border-left: 4px solid var(--primary); padding: 16px; margin-bottom: 16px; border-radius: 4px; border: 1px solid var(--border-color); }
+        .flow-step-text { font-size: 13px; color: #4a5568; line-height: 1.6; }
+
+        .divider { height: 1px; background: var(--border-color); margin: 16px 0; }
+        
+        .category-badge { display: inline-block; padding: 2px 8px; background: #e0e7ff; color: #3730a3; border-radius: 12px; font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+        .filter-chip { display: inline-block; padding: 4px 8px; background: #e2e8f0; color: #334155; border-radius: 12px; font-size: 10px; font-weight: 600; cursor: pointer; margin-right: 4px; margin-bottom: 6px; }
+        .filter-chip.active { background: var(--primary); color: white; }
+
+        /* ADMIN & FORMULÄR */
+        .admin-subnav { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; }
+        .admin-subtab-btn { padding: 8px 16px; border: none; background: #e2e8f0; color: #334151; font-weight: 600; font-size: 12px; border-radius: 4px; cursor: pointer; }
+        .admin-subtab-btn.active { background: var(--primary); color: white; }
+
+        .admin-form { background: #ffffff; padding: 20px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--text-color); }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; font-family: inherit; }
+        .form-control:focus { outline: none; border-color: var(--primary); }
+
+        .admin-table { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); font-size: 12px; margin-top: 10px; }
+        .admin-table th, .admin-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .admin-table th { background: #f8f9fa; font-weight: 700; color: #5e6c84; }
+        .action-btn { padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; margin-right: 4px; }
+        .edit-btn { background: #fa8c16; color: white; }
+        .delete-btn { background: var(--danger); color: white; }
+
+        .quiz-card { background: #f6ffed; border: 1px solid #b7eb8f; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+        .quiz-opt-btn { width: 100%; padding: 8px; margin-top: 6px; background: white; border: 1px solid #52c41a; border-radius: 4px; text-align: left; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .quiz-opt-btn:hover { background: #f6ffed; }
+        .quiz-opt-btn.correct { background: #d9f7be; border-color: #52c41a; color: #237804; }
+        .quiz-opt-btn.incorrect { background: #ffccc7; border-color: #ff4d4f; color: #a8071a; }
+
+        .chapter-box { background: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 20px; margin-bottom: 16px; }
+        .chapter-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid #f0f4ff; padding-bottom: 6px; }
+        .chapter-body { font-size: 13px; line-height: 1.7; color: var(--text-color); }
+
+        .cat-manager-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #e0e7ff; color: #3730a3; border-radius: 16px; font-size: 11px; font-weight: 700; margin-right: 6px; margin-bottom: 8px; }
+        .cat-delete-x { cursor: pointer; color: var(--danger); font-weight: bold; margin-left: 2px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 15px; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 550px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- PUBLIK INLOGGNINGSVY -->
+        <div id="login-view" class="hidden" style="max-width: 450px; margin: 60px auto; width: 100%;">
+            <h1 style="margin-bottom: 8px;">iBoxen - Agent Guide</h1>
+            <p style="color: #5e6c84; font-size: 13px; margin-bottom: 24px;">Logga in med ditt konto för att fortsätta till portalen.</p>
+            <div class="admin-form">
+                <div class="form-group">
+                    <label>E-postadress</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="namn@dynava.com">
+                </div>
+                <div class="form-group">
+                    <label>Lösenord</label>
+                    <input type="password" id="loginPass" class="form-control" placeholder="••••••••">
+                </div>
+                <button class="btn" onclick="handleLogin()" style="background: var(--primary); color: white; font-weight: 700; width: 100%; padding: 12px; text-align: center;">Logga in</button>
+            </div>
+        </div>
+
+        <!-- FULLSTÄNDIG PORTAL-VY -->
+        <div id="app-view" class="hidden" style="display: flex; flex-direction: column; flex: 1;">
+            <div class="header">
+                <div>
+                    <h1 style="font-size: 18px; margin-bottom: 2px;">iBoxen - Agent Guide System v11.31</h1>
+                    <span id="loginStatusText" style="font-size: 12px; color: var(--success); font-weight: 600;">Ansluten</span>
+                </div>
+                <div class="header-right">
+                    <div class="nav-tabs">
+                        <button id="tabGuider" class="nav-tab-btn active" onclick="switchMode('GUIDER')">🎯 Utbildning & Händelser</button>
+                        <button id="tabAcademy" class="nav-tab-btn" onclick="switchMode('ACADEMY')">🎓 iBoxen Academy</button>
+                        <button id="tabProfile" class="nav-tab-btn" onclick="switchMode('PROFILE')">👤 Min Sida & Mallar</button>
+                    </div>
+                    <button class="logout-btn-top" onclick="handleLogout()">Logga ut</button>
+                </div>
+            </div>
+
+            <div class="main-layout">
+                <div class="left-panel">
+                    <div class="section">
+                        <div class="section-title">📊 DAGENS QUIZ / POLL</div>
+                        <div id="quizSidebarWidget"></div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="section">
+                        <div class="section-title">🔍 SÖK MALLAR & AKADEMI</div>
+                        <div class="search-container">
+                            <input type="text" id="sidebarSearch" class="sidebar-search-field" placeholder="Sök i realtid..." oninput="handleSearch(this.value)">
+                            <button id="searchClearBtn" class="search-clear-btn" onclick="clearSearch()">✖</button>
+                        </div>
+                        <div class="section-title" style="margin-top: 12px;">🏷️ KATEGORIER</div>
+                        <div id="categoryFilterContainer"></div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="section">
+                        <div class="section-title">💾 DATA & SYNK</div>
+                        <button class="btn" onclick="fetchFromDatabase()">🔄 Uppdatera från databas</button>
+                        <button class="btn" onclick="exportData()">📤 Exportera backup</button>
+                    </div>
+                </div>
+                <div class="right-panel" id="mainContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONTAINER FÖR SKAPA / REDIGERA MALLAR -->
+    <div id="templateModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="margin-bottom: 16px;">Skapa ny svarsmall</h3>
+            <input type="hidden" id="modalTemplateId">
+            <div class="form-group">
+                <label>Titel</label>
+                <input type="text" id="modalTitleInput" class="form-control" placeholder="Titel på mallen...">
+            </div>
+            <div class="form-group">
+                <label>Kategori</label>
+                <select id="modalCategorySelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Malltext / Svar</label>
+                <textarea id="modalTextInput" class="form-control" rows="6" placeholder="Skriv svarsmallen här..."></textarea>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn" onclick="closeTemplateModal()" style="background: #6b7280; color: white; width: auto; padding: 8px 16px;">Avbryt</button>
+                <button class="btn" onclick="saveTemplateFromModal()" style="background: var(--success); color: white; width: auto; padding: 8px 16px; font-weight: 700;">Spara mall</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://ipbfauhmrotrdnkfwsms.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_3Oou_RktT9vs3DWAra3RRA_g8r97WdZ";
+        window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ADMIN_EMAIL = "jasmin.steihle@dynava.com";
+
+        let currentUser = null;
+        let customMalls = [];
+        let createdCategories = [];
+        let dbCases = [];
+        let activeQuiz = null;
+        let allQuizzesList = [];
+        let quizAnswersList = [];
+        let quizAnswered = false;
+        let selectedQuizOption = null;
+        let currentMode = 'GUIDER';
+        let adminSubTab = 'QUIZ';
+        let selectedCategoryFilter = 'ALLA';
+        let searchQuery = '';
+        let editingQuizId = null;
+        let academyChapters = [];
+        let editingChapterId = null;
+        let speedTestScenarios = [];
+        let speedTestResults = [];
+        let editingSpeedTestId = null;
+        let editingCaseId = null;
+        let adminMessages = [];
+
+        async function init() {
+            const { data } = await window.sbClient.auth.getSession();
+            if (data && data.session) {
+                currentUser = data.session.user;
+                showAppView();
+            } else {
+                showLoginView();
+            }
+            await fetchFromDatabase();
+        }
+
+        function showLoginView() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('app-view').classList.add('hidden');
+        }
+
+        function showAppView() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+            const statusEl = document.getElementById('loginStatusText');
+            if (statusEl && currentUser) {
+                statusEl.innerText = `Inloggad som: ${currentUser.email}`;
+            }
+        }
+
+        function isAdmin() {
+            return currentUser && currentUser.email === ADMIN_EMAIL;
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+
+            const { data, error } = await window.sbClient.auth.signInWithPassword({ email, password: pass });
+            if (error) {
+                alert("Inloggning misslyckades: " + error.message);
+            } else {
+                currentUser = data.user;
+                showAppView();
+                switchMode('GUIDER');
+            }
+        }
+
+        async function handleLogout() {
+            await window.sbClient.auth.signOut();
+            currentUser = null;
+            showLoginView();
+        }
+
+        async function fetchFromDatabase() {
+            try {
+                const { data: catData } = await window.sbClient.from('categories').select('name');
+                if (catData) createdCategories = catData.map(c => c.name.toUpperCase().trim());
+
+                const { data: tmplData } = await window.sbClient.from('templates').select('*').order('created_at', { ascending: true });
+                if (tmplData) customMalls = tmplData;
+
+                try {
+                    const { data: caseData } = await window.sbClient.from('flow_cases').select('*').order('created_at', { ascending: true });
+                    if (caseData && caseData.length > 0) {
+                        dbCases = caseData;
+                    }
+                } catch(e) {}
+
+                try {
+                    const { data: quizData } = await window.sbClient.from('quizzes').select('*').order('created_at', { ascending: false });
+                    if (quizData && quizData.length > 0) {
+                        allQuizzesList = quizData;
+                        activeQuiz = quizData.find(q => q.is_active) || quizData[0];
+                        if (activeQuiz) {
+                            const { data: ansData } = await window.sbClient.from('quiz_answers').select('*').eq('quiz_id', activeQuiz.id);
+                            if (ansData) quizAnswersList = ansData;
+                        }
+                    } else {
+                        allQuizzesList = [];
+                        activeQuiz = null;
+                        quizAnswersList = [];
+                    }
+                } catch(e) {}
+
+                try {
+                    const { data: chData } = await window.sbClient.from('learning_chapters').select('*').order('sort_order', { ascending: true });
+                    if (chData) academyChapters = chData;
+                } catch(e) {}
+
+                try {
+                    const { data: stData } = await window.sbClient.from('speed_test_scenarios').select('*').order('created_at', { ascending: true });
+                    if (stData) speedTestScenarios = stData;
+                } catch(e) {}
+
+                try {
+                    const { data: stResData } = await window.sbClient.from('speed_test_results').select('*').order('created_at', { ascending: false });
+                    if (stResData) speedTestResults = stResData;
+                } catch(e) {}
+
+                try {
+                    const { data: msgData } = await window.sbClient.from('admin_messages').select('*').order('created_at', { ascending: false });
+                    if (msgData) adminMessages = msgData;
+                } catch(e) {}
+
+                renderQuizWidget();
+                renderView();
+            } catch (err) {
+                console.error("Fel vid synk:", err);
+            }
+        }
+
+        function renderQuizWidget() {
+            const widget = document.getElementById('quizSidebarWidget');
+            if (!widget || !activeQuiz) { if(widget) widget.innerHTML = ''; return; }
+
+            let options = [];
+            try { options = typeof activeQuiz.options === 'string' ? JSON.parse(activeQuiz.options) : activeQuiz.options; } catch(e) { options = []; }
+            const correctIdx = Number(activeQuiz.correct_index !== undefined ? activeQuiz.correct_index : 0);
+            const explanation = activeQuiz.explanation || "Ingen förklaring angiven.";
+
+            widget.innerHTML = `
+                <div class="quiz-card">
+                    <div style="font-size: 11px; font-weight: 700; color: #237804; margin-bottom: 4px;">📊 DAGENS KUNSKAPSFRÅGA</div>
+                    <div style="font-size: 12px; font-weight: 600; color: #172b4d; margin-bottom: 8px;">${escapeHtml(activeQuiz.question)}</div>
+                    
+                    ${options.map((opt, idx) => {
+                        let btnClass = "quiz-opt-btn";
+                        if (quizAnswered) {
+                            if (idx === correctIdx) btnClass += " correct";
+                            else if (idx === selectedQuizOption) btnClass += " incorrect";
+                        }
+                        return `<button class="${btnClass}" ${quizAnswered ? 'disabled' : ''} onclick="submitQuizAnswer('${activeQuiz.id}', ${idx}, ${correctIdx})">${escapeHtml(opt)}</button>`;
+                    }).join('')}
+
+                    ${quizAnswered ? `
+                        <div style="margin-top: 10px; padding: 8px; background: ${selectedQuizOption === correctIdx ? '#f6ffed' : '#fff2f0'}; border: 1px solid ${selectedQuizOption === correctIdx ? '#b7eb8f' : '#ffccc7'}; border-radius: 4px; font-size: 11px;">
+                            <strong>${selectedQuizOption === correctIdx ? '✅ Rätt svar!' : '❌ Fel svar!'}</strong><br>
+                            <em>${escapeHtml(explanation)}</em>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        async function submitQuizAnswer(quizId, optionIndex, correctIdx) {
+            selectedQuizOption = optionIndex;
+            quizAnswered = true;
+            try { await window.sbClient.from('quiz_answers').insert([{ quiz_id: quizId, selected_option: optionIndex }]); } catch(e) {}
+            renderQuizWidget();
+        }
+
+        function getPopulatedCategories() {
+            const activeCategories = customMalls.map(m => m.category ? String(m.category).toUpperCase().trim() : 'ALLMÄNT').filter(cat => cat !== '');
+            return ['ALLA', ...new Set([...activeCategories, ...createdCategories])].sort();
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            ['tabGuider', 'tabAcademy', 'tabProfile'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            const activeEl = document.getElementById(mode === 'GUIDER' ? 'tabGuider' : mode === 'ACADEMY' ? 'tabAcademy' : 'tabProfile');
+            if (activeEl) activeEl.classList.add('active');
+            renderView();
+        }
+
+        function renderView() {
+            renderCategoryFilters();
+            const main = document.getElementById('mainContent');
+
+            if (currentMode === 'GUIDER') renderGuiderView(main);
+            else if (currentMode === 'ACADEMY') renderAcademyView(main);
+            else if (currentMode === 'SEARCH') renderSearchView(main);
+            else if (currentMode === 'PROFILE') renderProfileView(main);
+        }
+
+        function renderProfileView(container) {
+            let msgsHtml = adminMessages.length > 0 
+                ? adminMessages.map(m => `<div class="msg-board"><strong>📬 Meddelande från Coach:</strong> ${escapeHtml(m.text)} <span style="font-size: 10px; opacity: 0.7; margin-left: 10px;">${new Date(m.created_at).toLocaleDateString()}</span></div>`).join('')
+                : `<div style="color: #5e6c84; font-size: 12px; margin-bottom: 20px;">Inga nya meddelanden från coach.</div>`;
+
+            let myTemplatesHtml = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 20px;">
+                    <h3 style="font-size: 15px; margin-bottom: 0;">📄 Mina Svarsmallar (${customMalls.length} st)</h3>
+                    <button class="btn" onclick="openTemplateModal()" style="background: var(--primary); color: white; width: auto; padding: 6px 12px; font-weight: 600; margin-bottom: 0;">+ Skapa egen svarsmall</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Kategori</th>
+                            <th style="width: 65%;">Titel</th>
+                            <th style="width: 15%;">Åtgärder</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${customMalls.length > 0 ? customMalls.map(m => `
+                            <tr>
+                                <td><span class="category-badge">${escapeHtml(m.category || 'ALLMÄNT')}</span></td>
+                                <td><strong>${escapeHtml(m.title)}</strong></td>
+                                <td>
+                                    <button class="action-btn edit-btn" onclick="openTemplateModal('${m.id}')">✏️</button>
+                                    <button class="action-btn delete-btn" onclick="deleteTemplate('${m.id}')">🗑️</button>
+                                </td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="3" style="color: #5e6c84;">Inga svarsmallar skapade ännu.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+
+            if (!isAdmin()) {
+                container.innerHTML = `
+                    <div style="max-width: 800px; margin: 0 auto;">
+                        <div style="background: white; padding: 25px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">👤 Min Sida & Meddelanden</div>
+                            <div style="font-size: 13px; color: #5e6c84; margin-bottom: 20px;">Inloggad som: <strong>${escapeHtml(currentUser.email)}</strong></div>
+                            
+                            <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--primary);">📬 Inkorg</h3>
+                            ${msgsHtml}
+
+                            <div class="divider" style="margin: 20px 0;"></div>
+
+                            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; padding: 15px; border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #db2777;">🔒 Uppdatera ditt lösenord</div>
+                                <div class="form-group">
+                                    <label>Nytt lösenord</label>
+                                    <input type="password" id="newPasswordInput" class="form-control" placeholder="Minst 6 tecken...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Bekräfta nytt lösenord</label>
+                                    <input type="password" id="confirmPasswordInput" class="form-control" placeholder="Minst 6 tecken...">
+                                </div>
+                                <button class="btn" onclick="updateUserPassword()" style="background: #db2777; color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center;">🔑 Spara nytt lösenord</button>
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 25px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            ${myTemplatesHtml}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let subHtml = '';
+            
+            if (adminSubTab === 'QUIZ') {
+                let editQ = '';
+                let editOpts = '';
+                let editCorrect = 0;
+                let editExpl = '';
+                if (editingQuizId) {
+                    const eq = allQuizzesList.find(q => String(q.id) === String(editingQuizId));
+                    if (eq) {
+                        editQ = eq.question || '';
+                        let optsArr = [];
+                        try { optsArr = typeof eq.options === 'string' ? JSON.parse(eq.options) : eq.options; } catch(e) { optsArr = []; }
+                        editOpts = optsArr.join(', ');
+                        editCorrect = eq.correct_index || 0;
+                        editExpl = eq.explanation || '';
+                    }
+                }
+
+                subHtml = `
+                    <div class="admin-form" style="background: #f0fdf4; border-color: #bbf7d0;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--success);">📊 ${editingQuizId ? 'Redigera Quiz / Poll' : 'Skapa Dagens Quiz / Poll i Sidomenyn'}</div>
+                        <div class="form-group">
+                            <label>Fråga / Omröstningstext</label>
+                            <input type="text" id="newQuizQuestion" class="form-control" value="${escapeHtml(editQ)}" placeholder="Ex: Vad är det första vi alltid ber kunden om?">
+                        </div>
+                        <div class="form-group">
+                            <label>Svarsalternativ (separera med kommatecken ,)</label>
+                            <input type="text" id="newQuizOptions" class="form-control" value="${escapeHtml(editOpts)}" placeholder="Ex: Spårningsnummer, Telefonnummer, Namn">
+                        </div>
+                        <div class="form-group">
+                            <label>Index för RÄTT svar (0 för första alternativet, 1 för andra, etc.)</label>
+                            <input type="number" id="newQuizCorrectIndex" class="form-control" value="${editCorrect}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Förklaring / Motivering (visas direkt efter svar)</label>
+                            <textarea id="newQuizExplanation" class="form-control" rows="2" placeholder="Varför är detta svar rätt?">${escapeHtml(editExpl)}</textarea>
+                        </div>
+                        <button class="btn" onclick="saveSidebarQuiz()" style="background: var(--success); color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center;">🚀 ${editingQuizId ? 'Uppdatera Quiz' : 'Publicera i Sidomenyn'}</button>
+                        ${editingQuizId ? `<button class="btn" onclick="cancelSidebarQuizEdit()" style="background: #6b7280; color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center; margin-left: 6px;">Avbryt</button>` : ''}
+                    </div>
+
+                    <h3 style="margin-bottom: 8px;">📚 Alla Quizzes i Databasen (${allQuizzesList.length} st)</h3>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">Status</th>
+                                <th style="width: 65%;">Fråga</th>
+                                <th style="width: 15%;">Åtgärder</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allQuizzesList.length > 0 ? allQuizzesList.map(q => `
+                                <tr>
+                                    <td>${q.is_active ? '<span style="color: var(--success); font-weight: 700;">🟢 Aktiv</span>' : '<span style="color: #6b7280;">⚪ Inaktiv</span>'}</td>
+                                    <td><strong>${escapeHtml(q.question)}</strong></td>
+                                    <td>
+                                        ${!q.is_active ? `<button class="action-btn" onclick="setSidebarQuizActive('${q.id}')" style="background: var(--primary); color: white;" title="Gör aktiv">Gör aktiv</button>` : ''}
+                                        <button class="action-btn edit-btn" onclick="startEditSidebarQuiz('${q.id}')">✏️</button>
+                                        <button class="action-btn delete-btn" onclick="deleteSidebarQuiz('${q.id}')">🗑️</button>
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="3" style="color: #5e6c84;">Inga quizzes skapade ännu.</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+            } 
+            else if (adminSubTab === 'ACADEMY') {
+                let editChTitle = '';
+                let editChContent = '';
+                if (editingChapterId) {
+                    const ec = academyChapters.find(c => String(c.id) === String(editingChapterId));
+                    if (ec) {
+                        editChTitle = ec.title || '';
+                        editChContent = ec.content || '';
+                    }
+                }
+
+                subHtml = `
+                    <div class="admin-form" style="background: #f0fdf4; border-color: #bbf7d0;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--success);">📖 ${editingChapterId ? 'Redigera Kapitel' : 'Skapa Nytt Kapitel i Learning Book'}</div>
+                        <div class="form-group">
+                            <label>Kapitelrubrik</label>
+                            <input type="text" id="chapterTitleInput" class="form-control" value="${escapeHtml(editChTitle)}" placeholder="Ex: Kapitel 1: Introduktion & Öppettider">
+                        </div>
+                        <div class="form-group">
+                            <label>Kapitelinnehåll (HTML-stöd)</label>
+                            <textarea id="chapterContentInput" class="form-control" rows="6" placeholder="Skriv text eller HTML här...">${escapeHtml(editChContent)}</textarea>
+                        </div>
+                        <button class="btn" onclick="saveLearningChapter()" style="background: var(--success); color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center;">💾 ${editingChapterId ? 'Uppdatera Kapitel' : 'Spara Kapitel i DB'}</button>
+                        ${editingChapterId ? `<button class="btn" onclick="cancelChapterEdit()" style="background: #6b7280; color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center; margin-left: 6px;">Avbryt</button>` : ''}
+                    </div>
+
+                    <h3 style="margin-bottom: 8px;">📚 Befintliga kapitel i Learning Book (${academyChapters.length} st)</h3>
+                    <table class="admin-table" style="margin-bottom: 24px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">Ordning</th>
+                                <th style="width: 30%;">Titel</th>
+                                <th style="width: 45%;">Textförhandsvisning</th>
+                                <th style="width: 15%;">Åtgärder</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${academyChapters.length > 0 ? academyChapters.map((c, idx) => `
+                                <tr>
+                                    <td><strong>${c.sort_order || (idx + 1)}</strong></td>
+                                    <td><strong>${escapeHtml(c.title)}</strong></td>
+                                    <td style="color: #5e6c84; font-size: 11px;">${escapeHtml(c.content.replace(/<[^>]*>?/gm, '')).substring(0, 60)}...</td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick="startEditChapter('${c.id}')">✏️</button>
+                                        <button class="action-btn delete-btn" onclick="deleteChapter('${c.id}')">🗑️</button>
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="4" style="color: #5e6c84;">Inga kapitel skapade ännu.</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+            }
+            else if (adminSubTab === 'MALLAR') {
+                subHtml = `
+                    <div class="admin-form" style="background: #f0fdf4; border-color: #bbf7d0;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--success);">➕ Skapa ny kategori</div>
+                        <div class="form-group">
+                            <label>Kategorinamn</label>
+                            <input type="text" id="newCategoryInput" class="form-control" placeholder="Ex: RETUR, FELSÖKNING">
+                        </div>
+                        <button class="btn" onclick="saveNewCategory()" style="background: var(--success); color: white; font-weight: 700; width: auto; padding: 10px 16px;">💾 Spara kategori</button>
+                    </div>
+
+                    <h3 style="margin-bottom: 8px;">🏷️ Befintliga kategorier</h3>
+                    <div style="margin-bottom: 24px;">
+                        ${createdCategories.length > 0 ? createdCategories.map(cat => `
+                            <span class="cat-manager-chip">${cat} <span class="cat-delete-x" onclick="deleteCategory('${cat}')">×</span></span>
+                        `).join('') : '<span style="color: #5e6c84; font-size: 12px;">Inga anpassade kategorier skapade.</span>'}
+                    </div>
+
+                    ${myTemplatesHtml}
+                `;
+            }
+            else if (adminSubTab === 'CASES') {
+                let editTitle = '';
+                let editCategory = '';
+                let editStepTitle = '';
+                let editStepDesc = '';
+                let editStepTmpl = '';
+
+                if (editingCaseId) {
+                    const ec = dbCases.find(c => String(c.id) === String(editingCaseId));
+                    if (ec) {
+                        editTitle = ec.title || '';
+                        editCategory = ec.category || '';
+                        let steps = [];
+                        try { steps = typeof ec.steps === 'string' ? JSON.parse(ec.steps) : ec.steps; } catch(e) { steps = []; }
+                        if (steps.length > 0) {
+                            editStepTitle = steps[0].title || '';
+                            editStepDesc = steps[0].desc || '';
+                            editStepTmpl = steps[0].template || '';
+                        }
+                    }
+                }
+
+                subHtml = `
+                    <div class="admin-form" style="background: #f0fdf4; border-color: #bbf7d0;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--success);">📘 ${editingCaseId ? 'Redigera Utbildnings-Case' : 'Skapa Nytt Utbildnings-Case'}</div>
+                        <div class="form-group">
+                            <label>Casetitel</label>
+                            <input type="text" id="caseTitleInput" class="form-control" value="${escapeHtml(editTitle)}" placeholder="Ex: Case 6: Returhantering vid skadat emballage">
+                        </div>
+                        <div class="form-group">
+                            <label>Kategori / Tagg</label>
+                            <input type="text" id="caseCategoryInput" class="form-control" value="${escapeHtml(editCategory)}" placeholder="Ex: RETUR">
+                        </div>
+                        <div class="form-group">
+                            <label>Steg 1: Rubrik</label>
+                            <input type="text" id="caseStepTitleInput" class="form-control" value="${escapeHtml(editStepTitle)}" placeholder="Ex: Identifiera skadan">
+                        </div>
+                        <div class="form-group">
+                            <label>Steg 1: Beskrivning / Åtgärd</label>
+                            <textarea id="caseStepDescInput" class="form-control" rows="3" placeholder="Beskriv vad agenten ska kontrollera...">${escapeHtml(editStepDesc)}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Steg 1: Svarsmall (frivilligt)</label>
+                            <textarea id="caseStepTmplInput" class="form-control" rows="3" placeholder="Malltext att kopiera till kunden...">${escapeHtml(editStepTmpl)}</textarea>
+                        </div>
+                        <button class="btn" onclick="saveFlowCase()" style="background: var(--success); color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center;">💾 ${editingCaseId ? 'Uppdatera Case' : 'Spara Case i DB'}</button>
+                        ${editingCaseId ? `<button class="btn" onclick="cancelCaseEdit()" style="background: #6b7280; color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center; margin-left: 6px;">Avbryt</button>` : ''}
+                    </div>
+
+                    <h3 style="margin-bottom: 8px;">📚 Befintliga anpassade cases (${dbCases.length} st)</h3>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Kategori</th>
+                                <th style="width: 60%;">Titel</th>
+                                <th style="width: 15%;">Åtgärder</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dbCases.length > 0 ? dbCases.map(c => `
+                                <tr>
+                                    <td><span class="category-badge">${escapeHtml(c.category || 'CASE')}</span></td>
+                                    <td><strong>${escapeHtml(c.title)}</strong></td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick="startEditCase('${c.id}')">✏️</button>
+                                        <button class="action-btn delete-btn" onclick="deleteCase('${c.id}')">🗑️</button>
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="3" style="color: #5e6c84;">Inga anpassade cases skapade ännu.</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+            }
+            else if (adminSubTab === 'PASSWORD') {
+                subHtml = `
+                    <div class="admin-form" style="background: #fdf2f8; border-color: #fbcfe8;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #db2777;">🔒 Uppdatera ditt lösenord</div>
+                        <p style="font-size: 12px; color: #5e6c84; margin-bottom: 14px;">Ange ditt nya önskade lösenord nedan.</p>
+                        <div class="form-group">
+                            <label>Nytt lösenord</label>
+                            <input type="password" id="newPasswordInput" class="form-control" placeholder="Minst 6 tecken...">
+                        </div>
+                        <div class="form-group">
+                            <label>Bekräfta nytt lösenord</label>
+                            <input type="password" id="confirmPasswordInput" class="form-control" placeholder="Minst 6 tecken...">
+                        </div>
+                        <button class="btn" onclick="updateUserPassword()" style="background: #db2777; color: white; font-weight: 700; width: auto; padding: 10px 16px; text-align: center;">🔑 Spara nytt lösenord</button>
+                    </div>
+                `;
+            } else {
+                subHtml = `<div class="admin-form"><h3>Välj en flik ovan för administration</h3></div>`;
+            }
+
+            container.innerHTML = `
+                <div style="max-width: 900px; margin: 0 auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="font-size: 18px; margin-bottom: 0;">⚙️ Systemadministration (Live DB)</h2>
+                    </div>
+
+                    <div class="admin-form" style="background: #f0f9ff; border-color: #bae6fd; margin-bottom: 20px;">
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #0369a1;">📬 Skicka Personligt Meddelande / Coach-notis till användare</div>
+                        <div class="form-group">
+                            <label>Meddelandetext</label>
+                            <textarea id="newAdminMsgInput" class="form-control" rows="2" placeholder="Skriv coach-notis eller meddelande till agenterna..."></textarea>
+                        </div>
+                        <button class="btn" onclick="saveAdminMessage()" style="background: #0284c7; color: white; font-weight: 700; width: auto; padding: 8px 14px;">📤 Publicera meddelande</button>
+                    </div>
+
+                    ${adminMessages.length > 0 ? `
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 13px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">Befintliga meddelanden (${adminMessages.length} st)</h3>
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80%;">Meddelande</th>
+                                        <th style="width: 20%;">Åtgärd</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${adminMessages.map(m => `
+                                        <tr>
+                                            <td>${escapeHtml(m.text)} <span style="font-size: 10px; color: #6b7280; display: block;">${new Date(m.created_at).toLocaleString()}</span></td>
+                                            <td><button class="action-btn delete-btn" onclick="deleteAdminMessage('${m.id}')">🗑️</button></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : ''}
+
+                    <div class="admin-subnav" style="margin-top: 16px;">
+                        <button class="admin-subtab-btn ${adminSubTab === 'QUIZ' ? 'active' : ''}" onclick="setAdminSubTab('QUIZ')">📊 Quiz & Polls</button>
+                        <button class="admin-subtab-btn ${adminSubTab === 'ACADEMY' ? 'active' : ''}" onclick="setAdminSubTab('ACADEMY')">🎓 Akademi & Kundtest</button>
+                        <button class="admin-subtab-btn ${adminSubTab === 'MALLAR' ? 'active' : ''}" onclick="setAdminSubTab('MALLAR')">📄 Svarsmallar & Kategorier</button>
+                        <button class="admin-subtab-btn ${adminSubTab === 'CASES' ? 'active' : ''}" onclick="setAdminSubTab('CASES')">📘 Utbildnings-Cases</button>
+                        <button class="admin-subtab-btn ${adminSubTab === 'PASSWORD' ? 'active' : ''}" onclick="setAdminSubTab('PASSWORD')">🔒 Lösenord</button>
+                    </div>
+                    ${subHtml}
+                </div>
+            `;
+        }
+
+        function setAdminSubTab(tab) {
+            adminSubTab = tab;
+            renderView();
+        }
+
+        async function saveAdminMessage() {
+            const input = document.getElementById('newAdminMsgInput');
+            if(!input) return;
+            const text = input.value.trim();
+            if(!text) { alert("Skriv ett meddelande först!"); return; }
+            try {
+                await window.sbClient.from('admin_messages').insert([{ text }]);
+                input.value = '';
+                await fetchFromDatabase();
+            } catch(e) { alert("Kunde inte spara meddelande."); }
+        }
+
+        async function deleteAdminMessage(id) {
+            if(confirm("Vill du radera detta meddelande?")) {
+                try {
+                    await window.sbClient.from('admin_messages').delete().eq('id', id);
+                    await fetchFromDatabase();
+                } catch(e) {}
+            }
+        }
+
+        function openTemplateModal(id = null) {
+            document.getElementById('templateModal').classList.remove('hidden');
+            const selectEl = document.getElementById('modalCategorySelect');
+            const popCats = getPopulatedCategories().filter(c => c !== 'ALLA');
+            selectEl.innerHTML = popCats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            if (id) {
+                document.getElementById('modalTitle').innerText = "Redigera svarsmall";
+                const mall = customMalls.find(m => String(m.id) === String(id));
+                if (mall) {
+                    document.getElementById('modalTemplateId').value = mall.id;
+                    document.getElementById('modalTitleInput').value = mall.title || '';
+                    document.getElementById('modalCategorySelect').value = mall.category || popCats[0];
+                    document.getElementById('modalTextInput').value = mall.text || '';
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = "Skapa ny svarsmall";
+                document.getElementById('modalTemplateId').value = '';
+                document.getElementById('modalTitleInput').value = '';
+                document.getElementById('modalTextInput').value = '';
+            }
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('templateModal').classList.add('hidden');
+        }
+
+        async function saveTemplateFromModal() {
+            const id = document.getElementById('modalTemplateId').value;
+            const title = document.getElementById('modalTitleInput').value.trim();
+            const category = document.getElementById('modalCategorySelect').value;
+            const text = document.getElementById('modalTextInput').value.trim();
+
+            if (!title || !text) { alert("Fyll i både titel och malltext!"); return; }
+
+            try {
+                if (id) {
+                    await window.sbClient.from('templates').update({ title, category, text }).eq('id', id);
+                } else {
+                    const newId = 'tmpl_' + Date.now();
+                    await window.sbClient.from('templates').insert([{ id: newId, title, category, text }]);
+                }
+                closeTemplateModal();
+                await fetchFromDatabase();
+            } catch(e) { alert("Ett fel uppstod vid sparandet av mallen."); }
+        }
+
+        async function deleteTemplate(id) {
+            if (confirm("Är du säker på att du vill radera denna svarsmall?")) {
+                try {
+                    await window.sbClient.from('templates').delete().eq('id', id);
+                    await fetchFromDatabase();
+                } catch(e) {}
+            }
+        }
+
+        async function saveNewCategory() {
+            const input = document.getElementById('newCategoryInput');
+            if(!input) return;
+            const cat = input.value.toUpperCase().trim();
+            if(!cat) return;
+            try {
+                await window.sbClient.from('categories').insert([{ name: cat }]);
+                input.value = '';
+                await fetchFromDatabase();
+            } catch(e) {}
+        }
+
+        async function deleteCategory(catName) {
+            if(confirm(`Vill du radera kategorin ${catName}?`)) {
+                try {
+                    await window.sbClient.from('categories').delete().eq('name', catName);
+                    await fetchFromDatabase();
+                } catch(e) {}
+            }
+        }
+
+        async function saveSidebarQuiz() {
+            const qEl = document.getElementById('newQuizQuestion');
+            const optsEl = document.getElementById('newQuizOptions');
+            const corrEl = document.getElementById('newQuizCorrectIndex');
+            const explEl = document.getElementById('newQuizExplanation');
+            if (!qEl || !optsEl || !corrEl || !explEl) return;
+            
+            const q = qEl.value.trim();
+            const rawOpts = optsEl.value.trim();
+            const correctIndex = parseInt(corrEl.value) || 0;
+            const explanation = explEl.value.trim();
+
+            if (!q || !rawOpts) { alert("Fyll i både fråga och alternativ!"); return; }
+            const optsArr = rawOpts.split(',').map(o => o.trim()).filter(o => o !== '');
+
+            try {
+                if (editingQuizId) {
+                    await window.sbClient.from('quizzes').update({ question: q, options: optsArr, correct_index: correctIndex, explanation }).eq('id', editingQuizId);
+                    editingQuizId = null;
+                    alert("✅ Quiz uppdaterat!");
+                } else {
+                    const id = 'quiz_' + Date.now();
+                    await window.sbClient.from('quizzes').update({ is_active: false }).neq('id', '0');
+                    await window.sbClient.from('quizzes').insert([{ id: id, question: q, options: optsArr, correct_index: correctIndex, explanation, is_active: true }]);
+                    quizAnswered = false;
+                    selectedQuizOption = null;
+                    alert("🚀 Publicerat i sidomenyn!");
+                }
+                await fetchFromDatabase();
+            } catch(e) { alert("Ett fel uppstod vid sparandet."); }
+        }
+
+        function startEditSidebarQuiz(id) { editingQuizId = String(id); renderView(); }
+        function cancelSidebarQuizEdit() { editingQuizId = null; renderView(); }
+
+        async function setSidebarQuizActive(id) {
+            try {
+                await window.sbClient.from('quizzes').update({ is_active: false }).neq('id', '0');
+                await window.sbClient.from('quizzes').update({ is_active: true }).eq('id', id);
+                quizAnswered = false;
+                selectedQuizOption = null;
+                await fetchFromDatabase();
+            } catch(e) {}
+        }
+
+        async function deleteSidebarQuiz(id) {
+            if (confirm("Är du säker på att du vill radera detta quiz?")) {
+                try {
+                    await window.sbClient.from('quiz_answers').delete().eq('quiz_id', id);
+                    await window.sbClient.from('quizzes').delete().eq('id', id);
+                    if (String(editingQuizId) === String(id)) editingQuizId = null;
+                    await fetchFromDatabase();
+                } catch(e) {}
+            }
+        }
+
+        async function saveLearningChapter() {
+            const titleInput = document.getElementById('chapterTitleInput');
+            const contentInput = document.getElementById('chapterContentInput');
+            if (!titleInput || !contentInput) return;
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+            if (!title || !content) { alert("Fyll i både titel och innehåll!"); return; }
+
+            try {
+                if (editingChapterId) {
+                    await window.sbClient.from('learning_chapters').update({ title, content }).eq('id', editingChapterId);
+                    editingChapterId = null;
+                    alert("✅ Kapitel uppdaterat!");
+                } else {
+                    const sortOrder = academyChapters.length + 1;
+                    await window.sbClient.from('learning_chapters').insert([{ title, content, sort_order: sortOrder }]);
+                    alert("✅ Nytt kapitel skapat!");
+                }
+                await fetchFromDatabase();
+            } catch(e) { alert("Ett fel uppstod vid sparandet."); }
+        }
+
+        function startEditChapter(id) { editingChapterId = String(id); renderView(); }
+        function cancelChapterEdit() { editingChapterId = null; renderView(); }
+
+        async function deleteChapter(id) {
+            if (confirm("Är du säker på att du vill radera detta kapitel?")) {
+                try {
+                    await window.sbClient.from('learning_chapters').delete().eq('id', id);
+                    if (String(editingChapterId) === String(id)) editingChapterId = null;
+                    await fetchFromDatabase();
+                } catch(e) { alert("Ett fel uppstod vid borttagning."); }
+            }
+        }
+
+        async function saveFlowCase() {
+            const titleInput = document.getElementById('caseTitleInput');
+            const catInput = document.getElementById('caseCategoryInput');
+            const stTitleInput = document.getElementById('caseStepTitleInput');
+            const stDescInput = document.getElementById('caseStepDescInput');
+            const stTmplInput = document.getElementById('caseStepTmplInput');
+
+            if (!titleInput || !stTitleInput || !stDescInput) return;
+            const title = titleInput.value.trim();
+            const category = catInput.value.toUpperCase().trim() || 'CASE';
+            const stepTitle = stTitleInput.value.trim();
+            const stepDesc = stDescInput.value.trim();
+            const stepTmpl = stTmplInput.value.trim();
+
+            if (!title || !stepTitle || !stepDesc) { alert("Fyll i casetitel samt rubrik och beskrivning för steget!"); return; }
+            const stepsArray = [{ title: stepTitle, desc: stepDesc, template: stepTmpl }];
+
+            try {
+                if (editingCaseId) {
+                    await window.sbClient.from('flow_cases').update({ title, category, steps: stepsArray }).eq('id', editingCaseId);
+                    editingCaseId = null;
+                    alert("✅ Utbildnings-case uppdaterat!");
+                } else {
+                    const id = 'case_' + Date.now();
+                    await window.sbClient.from('flow_cases').insert([{ id, title, category, steps: stepsArray }]);
+                    alert("✅ Nytt utbildnings-case skapat i DB!");
+                }
+                await fetchFromDatabase();
+            } catch(e) { alert("Ett fel uppstod vid sparandet."); }
+        }
+
+        function startEditCase(id) { editingCaseId = String(id); renderView(); }
+        function cancelCaseEdit() { editingCaseId = null; renderView(); }
+
+        async function deleteCase(id) {
+            if (confirm("Är du säker på att du vill radera detta utbildnings-case?")) {
+                try {
+                    await window.sbClient.from('flow_cases').delete().eq('id', id);
+                    if (String(editingCaseId) === String(id)) editingCaseId = null;
+                    await fetchFromDatabase();
+                } catch(e) { alert("Ett fel uppstod vid borttagning."); }
+            }
+        }
+
+        async function updateUserPassword() {
+            const p1 = document.getElementById('newPasswordInput').value.trim();
+            const p2 = document.getElementById('confirmPasswordInput').value.trim();
+
+            if (!p1 || !p2) { alert("Fyll i båda fälten!"); return; }
+            if (p1.length < 6) { alert("Lösenordet måste vara minst 6 tecken långt!"); return; }
+            if (p1 !== p2) { alert("Lösenorden matchar inte varandra!"); return; }
+
+            try {
+                const { error } = await window.sbClient.auth.updateUser({ password: p1 });
+                if (error) {
+                    alert("Kunde inte uppdatera lösenord: " + error.message);
+                } else {
+                    alert("✅ Lösenordet har uppdaterats framgångsrikt!");
+                    document.getElementById('newPasswordInput').value = '';
+                    document.getElementById('confirmPasswordInput').value = '';
+                }
+            } catch(e) {
+                alert("Ett oväntat fel uppstod.");
+            }
+        }
+
+        function handleSearch(val) { searchQuery = val; currentMode = val.trim() === '' ? 'GUIDER' : 'SEARCH'; renderView(); }
+        function clearSearch() { document.getElementById('sidebarSearch').value = ''; searchQuery = ''; currentMode = 'GUIDER'; renderView(); }
+        
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilterContainer');
+            if (container) {
+                container.innerHTML = getPopulatedCategories().map(cat => `<span class="filter-chip ${selectedCategoryFilter === cat ? 'active' : ''}" onclick="setCategoryFilter('${cat}')">${cat}</span>`).join('');
+            }
+        }
+        function setCategoryFilter(cat) { selectedCategoryFilter = cat; currentMode = 'SEARCH'; renderView(); }
+        
+        function renderGuiderView(container) {
+            container.innerHTML = `
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--primary);">🎯 Utbildningsmoduler & Vanliga Händelser</div>
+                    <div style="font-size: 12px; color: #5e6c84; margin-bottom: 20px;">Välj ett ärende för att följa standardiserade processer och svarsmallar:</div>
+                    <div class="gate-buttons">
+                        ${dbCases.length > 0 ? dbCases.map(c => `<button class="gate-btn imported" style="margin-bottom: 8px;" onclick="openDynamicCase('${c.id}')">📘 ${escapeHtml(c.title)}</button>`).join('') : '<div style="color: #5e6c84; font-size: 12px;">Inga aktiva cases tillgängliga.</div>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openDynamicCase(caseId) {
+            const item = dbCases.find(c => String(c.id) === String(caseId));
+            if (!item) return;
+            const steps = typeof item.steps === 'string' ? JSON.parse(item.steps) : item.steps;
+            document.getElementById('mainContent').innerHTML = `
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <span class="category-badge">${escapeHtml(item.category || 'CASE')}</span>
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">📘 ${escapeHtml(item.title)}</div>
+                    ${steps.map((steg, idx) => `
+                        <div class="flow-step">
+                            <div style="font-weight: 700; margin-bottom: 6px; font-size: 13px; color: var(--primary);">Steg ${idx + 1}: ${escapeHtml(steg.title)}</div>
+                            <div class="flow-step-text">${escapeHtml(steg.desc)}</div>
+                        </div>
+                        ${steg.template ? `
+                            <div class="template-box" style="margin-bottom: 16px;">
+                                <div class="template-title">💬 Agentsvar:</div>
+                                <div class="template-text">${escapeHtml(steg.template)}</div>
+                                <button class="copy-btn" onclick="copyToClipboard(this, \`${escapeForJS(steg.template)}\`)">📋 Kopiera</button>
+                            </div>
+                        ` : ''}
+                    `).join('')}
+                    <button class="back-btn" onclick="renderView()" style="width: 100%;">← Tillbaka</button>
+                </div>
+            `;
+        }
+
+        function selectTemplateById(id) {
+            const mall = customMalls.find(m => String(m.id) === String(id));
+            if (!mall) return;
+            document.getElementById('mainContent').innerHTML = `
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <span class="category-badge">${escapeHtml(mall.category || 'ALLMÄNT')}</span>
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">📄 ${escapeHtml(mall.title)}</div>
+                    <div class="template-box" style="margin-bottom: 16px;">
+                        <div class="template-title">💬 Svarsmall:</div>
+                        <div class="template-text">${escapeHtml(mall.text)}</div>
+                        <button class="copy-btn" onclick="copyToClipboard(this, \`${escapeForJS(mall.text)}\`)">📋 Kopiera</button>
+                    </div>
+                    <button class="back-btn" onclick="renderView()" style="width: 100%;">← Tillbaka</button>
+                </div>
+            `;
+        }
+
+        function renderSearchView(container) {
+            let filteredMalls = customMalls;
+            if (selectedCategoryFilter !== 'ALLA') filteredMalls = filteredMalls.filter(m => String(m.category).toUpperCase().trim() === selectedCategoryFilter);
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                filteredMalls = filteredMalls.filter(m => String(m.title).toLowerCase().includes(q) || String(m.text).toLowerCase().includes(q));
+            }
+            container.innerHTML = `
+                <div style="max-width: 650px; margin: 0 auto;">
+                    <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--primary);">🔍 Sökresultat</div>
+                    <div class="gate-buttons">
+                        ${filteredMalls.map(m => `<button class="gate-btn imported" onclick="selectTemplateById('${m.id}')"><span class="category-badge">${m.category}</span><br>📄 ${m.title}</button>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAcademyView(container) {
+            container.innerHTML = `
+                <div style="max-width: 800px; margin: 0 auto;">
+                    <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 16px;">🎓 iBoxen Academy</div>
+                    ${academyChapters.length > 0 ? academyChapters.map((c, i) => `
+                        <div class="chapter-box">
+                            <div class="chapter-title">Kapitel ${i+1}: ${escapeHtml(c.title)}</div>
+                            <div class="chapter-body">${c.content}</div>
+                        </div>
+                    `).join('') : '<div class="chapter-box">Inga kapitel skapade ännu.</div>'}
+                </div>
+            `;
+        }
+
+        function copyToClipboard(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                if(btn) { btn.innerText = "✅ Kopierat!"; setTimeout(() => btn.innerText = "📋 Kopiera", 1500); }
+            });
+        }
+        function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+        function escapeForJS(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/`/g, '\\`'); }
+        function exportData() {
+            const blob = new Blob([JSON.stringify({ cases: dbCases, templates: customMalls }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'backup_data.json'; a.click();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
